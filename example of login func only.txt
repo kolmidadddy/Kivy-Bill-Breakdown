@@ -1,0 +1,51 @@
+class BreakdownApp(MDApp):
+    screen = Screen()
+
+    # LOG IN #
+    def build(self):
+        self.theme_cls.primary_palette = "DeepPurple"
+        self.theme_cls.theme_style ="Dark"
+        button = MDRectangleFlatButton(text ="Show", pos_hint={'center_x': 0.5, 'center_y': 0.4}
+                                       on_release=self.show_data)
+        self.username = Builder.load_string(username_helper)
+        self.screen.add_widget(self.username)
+        self.screen.add_widget(button)
+        return self.screen
+    
+    #
+    def show_data(self,obj):
+        if self.username.text is"":
+            check_string = "Please enter a username!"
+        else:
+            check_string = self.username.text + ' does not exist'
+        close_btn = MDFlatButton(text='Close',on_realease=self.close_dialog)
+        more_btn = MDFlatButton(text='More')
+        self.dialog = MDDialog(title= 'Username Check', text = check_string,
+                          size_hint=(0.5,1),
+                          buttons =[close_btn,more_btn])
+        self.dialog.open()
+    
+    # closing the dialog box
+    def close_dialog(self,obj):
+        self.dialog.dismiss()
+
+    # DASHBOARD # 
+    # Flow to create a scroll view of the items
+    # 
+    def dashboard(self):
+        screen = Screen()
+
+        scroll = ScrollView()
+        list_view = MDList()
+        scroll.add_widget(list_view)
+
+        item1 = OneLineListItem(text='')
+        item2 = OneLineListItem(text='Test1')
+
+        list_view.add_widget(item1)
+        list_view.add_widget(item2)
+ 
+        screen.add_widget(scroll)
+        return screen
+
+BreakdownApp().run()
