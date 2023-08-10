@@ -1,35 +1,41 @@
 import json
-from plyer import email
+import os
+import shutil
+import smtplib
 from helpers import username_helper
+from email.message import EmailMessage
 
-from kivymd.app import MDApp
+from kivy.metrics import dp
+from kivy.clock import Clock
 from kivy.lang import Builder
-from kivy.properties import ObjectProperty, StringProperty, ListProperty
+from kivy.utils import platform
 from kivy.core.window import Window
 
 from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.uix.filechooser import FileChooserIconView
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.image import AsyncImage
 from kivy.uix.spinner import Spinner
-from kivy.uix.button import Button
+from kivy.uix.image import Image
 
+
+from kivymd.app import MDApp
+from kivymd.toast import toast
 from kivymd.uix.label import MDLabel
+from kivymd.uix.screen import MDScreen
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.spinner import MDSpinner
-from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.list import IconLeftWidget
 from kivymd.uix.toolbar import MDTopAppBar
-from kivymd.theming import ThemableBehavior
+from kivymd.uix.list import IconLeftWidget
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.textfield import MDTextField
+from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.list import MDList, OneLineListItem, OneLineIconListItem
-from kivymd.uix.navigationdrawer import MDNavigationDrawer, MDNavigationLayout
 from kivymd.uix.button import MDFlatButton, MDRectangleFlatButton, MDIconButton, MDFloatingActionButton
 
-
-Window.size = (500,800)
+Window.size = (335,595)
 
 def create_box_layout():
     return BoxLayout(orientation='vertical')
@@ -37,6 +43,18 @@ def create_box_layout():
 def create_main_box():
     return BoxLayout(orientation='vertical', padding=10, spacing=5)
 
+class SplashScreen(MDScreen):
+    def __init__(self, **kwargs):
+        super(SplashScreen, self).__init__(**kwargs)
+        float_layout = FloatLayout()
+        gif_image = Image(source='assets\spin.gif', allow_stretch=True)
+        float_layout.add_widget(gif_image)
+        self.add_widget(float_layout)
+        Clock.schedule_once(self.goto_main_screen, 15) # 10 seconds delay
+        
+    def goto_main_screen(self,*args):
+        self.manager.current ='Login'
+        
 class LoginScreen(Screen):
     def __init__(self,**kwargs):
         super(LoginScreen, self).__init__(**kwargs)
@@ -77,6 +95,7 @@ class LoginScreen(Screen):
             check_string = "Please enter a username!"
         else:
             check_string = self.username.text 
+        
 
         close_btn = MDFlatButton(text='Close',on_release=self.close_dialog)
         self.done_btn = MDFlatButton(text='Done', on_release= self.donebutton)
@@ -90,7 +109,8 @@ class LoginScreen(Screen):
         close_button = MDFlatButton(text='Close', on_release=self.close_dialog)
 
         # create the dialog
-        self.dialog = MDDialog(title='Information', text='This is a popup message!',
+        self.dialog = MDDialog(title='Information', text='Navigate social dining with ease using our Bill Break-down App! Designed for students, this app offers flexible options for splitting bills equally or by custom ratios and percentages. Store results for future reference or share instantly with friends. Simplify shared expenses, one meal at a time.',
+                                                        
                                size_hint=(0.8, 0.3),
                                buttons=[close_button])
 
@@ -118,11 +138,6 @@ class DashboardScreen(Screen):
                                    on_release=self.back_to_login)
         toolbar.left_action_items = [["arrow-left", lambda x: self.back_to_login()]]
 
-        # # navigator button
-        # nav_button= MDIconButton(icon="dots-vertical",
-        #                           pos_hint={'center_x': 0.5, 'center_y': 0.5},
-        #                           on_release=self.show_navigator)
-        # toolbar.right_action_items = [["dots-vertical", lambda x: self.drop_down_menu()]]
         box.add_widget(toolbar)
 
         # scroll view abd list view before
@@ -142,12 +157,13 @@ class DashboardScreen(Screen):
         item2.add_widget(icon2)
         item3.add_widget(icon3)
         
+        # binding 
+        item1.bind(on_release=self.goto_bill_breakdown)
+        item2.bind(on_release=self.goto_view_results)
+        item3.bind(on_release=self.goto_share_results)  
+        list_view.add_widget(item1)
         list_view.add_widget(item2)
         list_view.add_widget(item3)
-
-        # binding 
-        item1.bind(on_release=self.goto_bill_breakdown) 
-        list_view.add_widget(item1)
 
         # add the scroll view to the box layout
         box.add_widget(scroll)
@@ -155,8 +171,14 @@ class DashboardScreen(Screen):
         # add the box layout to the screen
         self.add_widget(box)
     
-    def goto_bill_breakdown(self,instance):
+    def goto_bill_breakdown(self, instance):
         self.manager.current = 'BillBreakdown'
+        
+    def goto_share_results(self, instance):
+        self.manager.current = 'ShareResults'
+        
+    def goto_view_results(self, instance):
+        self.manager.current = 'ViewPreviousResults'
     
     def back_to_login(self):
         self.manager.current ='Login'
@@ -170,11 +192,11 @@ class BillBreakdownScreen(Screen):
         # create the toolbar and the back button to dashboard
         toolbar = MDTopAppBar(title='Bill Breakdown Calculator', elevation=10)
         back_button = MDIconButton(icon="arrow-left",
-                                   pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                                   pos_hint={'center_x': 0.2, 'center_y': 0.5},
                                    on_release=self.back_to_dashboard)
         toolbar.left_action_items = [["arrow-left", lambda x: self.back_to_dashboard()]]
         main_box.add_widget(toolbar)
-
+        
         # scroll view and list view before
         scroll = ScrollView()
         list_view = MDList()
@@ -205,21 +227,34 @@ class BillBreakdownScreen(Screen):
         # Choose break-down type
         self.spinner = Spinner(text='Equal break-down', 
                                values=('Equal break-down', 
-                                       'Custom break-down by percentage/ratio', 
-                                       'Custom break-down by amount'),
+                                       'Custom break-down by ratio'),
                                 size_hint_y=0.6)
+        self.spinner.bind(text=self.on_spinner_select)  # Bind the event handler
         main_box.add_widget(self.spinner)
 
         # Custom grid layout for inputs
         self.custom_grid = GridLayout(cols=2, spacing=5)
         main_box.add_widget(self.custom_grid)
+        
+        bottom_app_bar = FloatLayout(size_hint_y=0.15)
+        
+        # create the FAB and bind the action to save results()
+        fab_button = MDFloatingActionButton(
+            icon="content-save",
+            pos_hint={"center_x": 0.8, "center_y": 0.5},
+            on_release=self.save_results
+        )
+        # Attach the FAB to the bottom bar
+        bottom_app_bar.add_widget(fab_button)
+
+        # Add the bottom app bar to the main layout
+        main_box.add_widget(bottom_app_bar)
 
         # Result field
         resultlabel = MDLabel(text='Results: ',text_color =(0.40, 0.01, 0.24, 1), size_hint=(1,0.2))
         self.result_label = MDTextField(text='', size_hint=(1, 0.2), readonly=True)
         main_box.add_widget(resultlabel)
         main_box.add_widget(self.result_label)
-
 
     def update_rect(self, instance, value):
         self.rect.pos = instance.pos
@@ -231,31 +266,23 @@ class BillBreakdownScreen(Screen):
         if self.spinner.text == 'Equal break-down':
         # Custom breakdown logic by equality
             self.result_label.text = f'Each person pays: RM{total_bill / num_people:.2f}'
+            
+        elif self.spinner.text == 'Custom break-down by ratio':
+            # Extract the ratio values from the TextInput widgets in the custom grid
+            ratio_values = [int(text_input.text) for text_input in self.custom_grid.children if isinstance(text_input, TextInput)][::-1]
 
-        elif self.spinner.text == 'Custom break-down by percentage/ratio':
-            percentages = [float(text_input.text) for text_input in self.custom_grid.children[::-2]] # Extract inputs
-            if sum(percentages) != 100:
-                self.result_label.text = 'Percentages do not add up to 100%'
-                return
-            amounts = [total_bill * p / 100 for p in percentages]
-            result_text = ', '.join([f'RM{amount:.2f}' for amount in amounts])
-            self.result_label.text = 'Amounts: ' + result_text
+            # Calculate the total ratio value
+            total_ratio = sum(ratio_values)
 
-        elif self.spinner.text == 'Custom break-down by amount':
-            amounts = [float(text_input.text) for text_input in self.custom_grid.children[::-2]] # Extract inputs
-            if sum(amounts) != total_bill:
-                self.result_label.text = f'Discrepancy detected: Sum of individual amounts (RM{sum(amounts):.2f}) does not match total bill (RM{total_bill:.2f})'
-                return
-            result_text = ', '.join([f'RM{amount:.2f}' for amount in amounts])
-            self.result_label.text = 'Amounts: ' + result_text
+            # Calculate the amounts for each person based on the ratios
+            amounts = [total_bill * r / total_ratio for r in ratio_values]
 
-        else:
-            custom_value = float(self.custom_input.text)
-            # Able to customize the following logic as per your requirements
-            amount = total_bill * custom_value / 100
-            self.result_label.text = f'First person pays: RM{amount:.2f}, Second person pays: RM{total_bill - amount:.2f}'
-
+            # Create the result text
+            result_text = ', '.join([f'Ratio {i+1}: RM{amount:.2f}' for i, amount in enumerate(amounts)])
+            self.result_label.text = result_text
+    
     def save_results(self, instance):
+        self.username = Builder.load_string(username_helper)
         if not self.result_label.text:
             return
 
@@ -266,9 +293,19 @@ class BillBreakdownScreen(Screen):
             'result': self.result_label.text
         }
 
-        with open('results.json', 'a') as file:
-            json.dump(data, file)
-            file.write('\n')
+        try:
+            with open('results.json', 'r') as file:
+                results = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            results = []
+
+        results.append(data)
+
+        with open('results.json', 'w') as file:
+            json.dump(results, file)
+            
+        # Optional: Provide feedback to the user that the save was successful
+        toast("Results saved successfully!")
 
     def query_results(self, instance):
         results = []
@@ -285,243 +322,215 @@ class BillBreakdownScreen(Screen):
         box.bind(minimum_height=box.setter('height'))
 
         for result in results:
-            label = MDLabel(text=f"Total Bill: {result['total_bill']}, People: {result['number_of_people']}, Type: {result['breakdown_type']}, Result: {result['result']}")
+            label = MDLabel(text=f"Total: {result['total_bill']}, People: {result['number_of_people']}, Type: {result['breakdown_type']}, Result: {result['result']}")
             box.add_widget(label)
 
         self.scroll_view.add_widget(box)
         self.box.add_widget(self.scroll_view)
 
-    
     def on_spinner_select(self, instance, value):
-        if value == 'Custom break-down':
-            self.custom_input.disabled = False
-        else:
-            self.custom_input.disabled = True
+        self.custom_grid.clear_widgets()  # Clear existing widgets
+        if value == 'Custom break-down by ratio':
+            # Number of ratios you want to allow
+            num_ratios = 3
+            for i in range(num_ratios):
+                ratio_label = MDLabel(text=f'Enter Ratio {i+1}:')
+                ratio_input = TextInput(input_filter='int')
+                self.custom_grid.add_widget(ratio_label)
+                self.custom_grid.add_widget(ratio_input)
 
-    # def share_results(self, instance):
-    #     main_box = BoxLayout(orientation='vertical', padding=10, spacing=5)
-    #     if not self.result_label.text:
-    #         # Don't attempt to share if there's no result
-    #         return
-
-    #     subject = "Bill Breakdown"
-    #     body = f"Here's the breakdown of the bill:\n\n{self.result_label.text}"
-        
-    #     # Open the email client with pre-filled subject and body
-    #     email.send(subject=subject, text=body)
+            # Update the grid layout to have two columns
+            self.custom_grid.cols = 2
 
     def back_to_dashboard(self):
         self.manager.current ='Dashboard'
 
+class ViewPreviousResults(Screen):
+    def __init__(self, **kwargs):
+        super(ViewPreviousResults, self).__init__(**kwargs)
+        # using a BoxLayout to arrange the toolbar and the scroll view vertically
+        box = create_box_layout()
+        
+        # create the toolbar and the back button to dashboard
+        toolbar = MDTopAppBar(title='View Previous Results', elevation=10)
+        back_button = MDIconButton(icon="arrow-left",
+                                   pos_hint={'center_x': 0.2, 'center_y': 0.5},
+                                   on_release=self.back_to_dashboard)
+        toolbar.left_action_items = [["arrow-left", lambda x: self.back_to_dashboard()]]
+        box.add_widget(toolbar)
+        
+        # Read results from JSON file
+        try:
+            with open('results.json', 'r') as file:
+                results = json.load(file)
+        except FileNotFoundError:
+            return
+        
+        # Extract data in the format needed by MDDataTable
+        rows = [(
+            result['total_bill'],
+            result['number_of_people'],
+            result['breakdown_type'],
+            result['result']
+        ) for result in results]
+        
+        # Create the data table
+        table = MDDataTable(
+            size_hint=(0.9, 0.6),
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            rows_num=len(rows),
+            column_data=[
+                ("Total", dp(30)),
+                ("No. of People", dp(30)),
+                ("Type", dp(30)),
+                ("Result", dp(40))
+            ],
+            row_data=rows
+        )
+        box.add_widget(table)
+        self.add_widget(box)
+         
+    def back_to_dashboard(self):
+        self.manager.current = 'Dashboard'
+
+class ShareResults(Screen):
+    def __init__(self, **kwargs):
+        super(ShareResults, self).__init__(**kwargs)
+        box = create_box_layout()
+        
+        toolbar = MDTopAppBar(title='Share Your Results To...', elevation=20)
+        back_button = MDIconButton(icon="arrow-left",
+                                   pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                                   on_release=self.back_to_dashboard)
+        toolbar.left_action_items = [["arrow-left", lambda x: self.back_to_dashboard()]]
+        
+        box.add_widget(toolbar)
+        scroll = ScrollView()
+        list_view = MDList()
+        scroll.add_widget(list_view)
+        
+        # Generate report and add to the scroll view
+        report_path = self.generate_report()
+        if report_path:
+            with open(report_path, 'r') as file:
+                for line in file:
+                    list_view.add_widget(OneLineListItem(text=line.strip()))
+                # Create a button to trigger report generation and sharing
+                
+        share_button = OneLineListItem(text="Share Report")
+        share_button.bind(on_release=lambda x: self.share_report())
+        list_view.add_widget(share_button)
+        
+        # add the scroll view to the box layout
+        box.add_widget(scroll)
+        # add the box layout to the screen
+        self.add_widget(box)
+        
+    def generate_report(self):
+        # Read results from JSON file
+        try:
+            with open('results.json', 'r') as file:
+                results = json.load(file)
+        except FileNotFoundError:
+            print("File not found!")
+            return
+
+        # Create a report in text format
+        report_text = "Total, No. of People, Type, Result\n"  # Header
+        for result in results:
+            line = f"{result['total_bill']}, {result['number_of_people']}, {result['breakdown_type']}, {result['result']}\n"
+            report_text += line
+
+        # Save the report as a file
+        report_path = 'report.txt'
+        with open(report_path, 'w') as file:
+            file.write(report_text)
+
+        return report_path
+    
+    def share_report(self):
+        report_path = self.generate_report()
+        if not report_path:
+            print("Failed to generate report!")
+            return
+        
+        self.report_path = report_path
+        share_options = ShareOptions(self)
+        dialog = MDDialog(content_cls=share_options, title="Choose an option to share the report:")
+        share_options.dialog = dialog
+        dialog.open()
+        
+    def send_via_email(self, report_path):
+        msg = EmailMessage()
+        msg['Subject'] = 'Your Report'
+        msg['From'] = 'your_email@example.com'
+        msg['To'] = 'recipient@example.com'
+        msg.set_content('Here is the report you requested.')
+
+        with open(report_path, 'rb') as file:
+            file_data = file.read()
+            file_name = report_path.split('/')[-1]
+
+        msg.add_attachment(file_data, maintype='application', subtype='octet-stream', filename=file_name)
+
+        with smtplib.SMTP_SSL('smtp.example.com', 465) as smtp:
+            smtp.login('your_email@example.com', 'your_password')
+            smtp.send_message(msg)
+
+        print('Email sent successfully!')
+        
+    def save_to_directory(self, report_path):
+        filechooser = FileChooserIconView(path='/', filters=['*.txt'])
+        target_path = filechooser.selection[0]  # Get the selected path
+
+        try:
+            shutil.copy(report_path, target_path)
+            print(f'Report saved to {target_path} successfully!')
+        except Exception as e:
+            print(f'Failed to save report: {str(e)}')
+            
+    def back_to_dashboard(self):
+        self.manager.current ='Dashboard'
+
+class ShareOptions(BoxLayout):
+    def __init__(self, parent_screen, **kwargs):
+        super(ShareOptions, self).__init__(**kwargs)
+        self.parent_screen = parent_screen
+        self.orientation = 'vertical'
+        self.add_widget(MDRaisedButton(text="Open in Default Application", on_release=self.open_default))
+        self.add_widget(MDRaisedButton(text="Send via Email", on_release=self.send_email))
+        self.add_widget(MDRaisedButton(text="Save to Specific Directory", on_release=self.save_directory))
+
+    def open_default(self, instance):
+        self.parent_screen.open_default()
+        self.dialog.dismiss()
+
+    def send_email(self, instance):
+        self.parent_screen.send_via_email(self.parent_screen.report_path)
+        self.dialog.dismiss()
+
+    def save_directory(self, instance):
+        self.parent_screen.save_to_directory(self.parent_screen.report_path)
+        self.dialog.dismiss()
+
 class BreakdownApp(MDApp):
     def build(self):
+        Builder.load_file('splashScreen.kv')
         self.theme_cls.primary_palette = "DeepPurple"
         self.theme_cls.theme_style = "Dark"
-
+        
         sm = ScreenManager()
+        sm.add_widget(SplashScreen(name='SplashScreen'))
         sm.add_widget(LoginScreen(name='Login'))
         sm.add_widget(DashboardScreen(name='Dashboard'))
         sm.add_widget(BillBreakdownScreen(name='BillBreakdown'))
+        sm.add_widget(ShareResults(name='ShareResults'))
+        sm.add_widget(ViewPreviousResults(name='ViewPreviousResults'))
+        
+        # start with the splash screen
+        sm.current = 'SplashScreen'
         return sm    
+
 
 if __name__ == '__main__':
     BreakdownApp().run()
-
-
-
-
-# import json
-# from plyer import email
-
-
-# from kivy.app import App
-# from kivy.core.window import Window
-# from kivy.graphics import Rectangle, Color
-# from kivy.uix.label import Label
-# from kivy.uix.widget import Widget
-# from kivy.uix.button import Button
-# from kivy.uix.spinner import Spinner
-# from kivy.uix.dropdown import DropDown
-# from kivy.uix.textinput import TextInput
-# from kivy.uix.boxlayout import BoxLayout
-# from kivy.uix.gridlayout import GridLayout
-# from kivy.uix.scrollview import ScrollView
-
-# class BreakdownApp(App):
-#     def build(self):
-#         # Main vertical layout
-#         main_box = BoxLayout(orientation='vertical', padding=10, spacing=5)
-
-#         # self.box = BoxLayout(orientation='vertical', padding=10, spacing=5)
-
-#         # # Horizontal layout for side-by-side boxes
-#         # side_by_side_box = BoxLayout(orientation='horizontal', spacing=10)
-
-#         # Header with custom color
-#         header = BoxLayout(size_hint=(1, 0.1), orientation='horizontal')
-#         with header.canvas.before:
-#             Color(0.2, 0.5, 0.8, 1)  # Set the color (Red, Green, Blue, Alpha)
-#             self.rect = Rectangle(pos=header.pos, size=header.size)
-#         header.bind(pos=self.update_rect, size=self.update_rect)
-
-#         # Dropdown menu
-#         self.dropdown = DropDown()
-#         self.save_button = Button(text='Save Results', size_hint_y=None, height=44)
-#         self.save_button.bind(on_press=self.save_results)
-#         self.dropdown.add_widget(self.save_button)
-
-#         self.query_button = Button(text='View Previous Results', size_hint_y=None, height=44)
-#         self.query_button.bind(on_press=self.query_results)
-#         self.dropdown.add_widget(self.query_button)
-
-#         self.share_button = Button(text='Share Results', size_hint_y=None, height=44)
-#         self.share_button.bind(on_press=self.share_results)  # You can define this function to share the results
-#         self.dropdown.add_widget(self.share_button)
-
-#         # Trigger button to open dropdown
-#         self.main_button = Button(text='Options', size_hint=(0.2, 1))
-#         self.main_button.bind(on_release=self.dropdown.open)
-#         self.dropdown.bind(on_select=lambda instance, x: setattr(self.main_button, 'text', x))
-
-#         header.add_widget(self.main_button) # Add dropdown button to header
-
-#         title_label = Label(text='Bill Break-down', font_size='20sp', halign='center', bold=True)
-#         header.add_widget(title_label)
-
-#         main_box.add_widget(header) # Add header to main layout
-
-#         # Left-side box for 'Enter Total Bill (RM):'
-#         left_box = BoxLayout(orientation='vertical', spacing=5)
-#         total_bill_label = Label(text='Enter Total Bill (RM):')
-#         self.total_bill_input = TextInput(input_filter='float')
-#         left_box.add_widget(total_bill_label)
-#         left_box.add_widget(self.total_bill_input)
-
-#         # Right-side box for 'Enter Number of People:'
-#         right_box = BoxLayout(orientation='vertical', spacing=5)
-#         people_label = Label(text='Enter Number of People:')
-#         self.people_input = TextInput(input_filter='int')
-#         right_box.add_widget(people_label)
-#         right_box.add_widget(self.people_input)
-
-#         # Add left and right boxes to horizontal layout
-#         side_by_side_box = BoxLayout(orientation='horizontal', spacing=5)
-#         side_by_side_box.add_widget(left_box)
-#         side_by_side_box.add_widget(right_box)
-
-#         # Add horizontal layout to main vertical layout
-#         # main_box = BoxLayout(orientation='vertical', spacing=5)
-#         main_box.add_widget(side_by_side_box)
-
-#         # Add calculate button
-#         self.calculate_button = Button(text='Calculate', size_hint=(1, 0.15))
-#         self.calculate_button.bind(on_press=self.break_down)
-#         main_box.add_widget(self.calculate_button)
-
-#         # Choose break-down type
-#         self.spinner = Spinner(text='Equal break-down', values=('Equal break-down', 'Custom break-down by percentage/ratio', 'Custom break-down by amount'))
-#         right_box.add_widget(self.spinner)
-
-#         # Custom grid layout for inputs
-#         self.custom_grid = GridLayout(cols=2, spacing=5)
-#         right_box.add_widget(self.custom_grid)
-
-#         self.breakdown_button = Button(text='Calculate', size_hint=(1, 0.15))
-#         self.breakdown_button.bind(on_press=self.break_down)
-#         right_box.add_widget(self.breakdown_button)
-
-#         self.result_label = Label(text='', size_hint=(1, 0.2))
-#         right_box.add_widget(self.result_label)
-
-#         return main_box
-    
-#     def update_rect(self, instance, value):
-#         self.rect.pos = instance.pos
-#         self.rect.size = instance.size
-    
-#     def break_down(self, instance):
-#         total_bill = float(self.total_bill_input.text)
-#         num_people = int(self.people_input.text)
-#         if self.spinner.text == 'Equal break-down':
-#         # Custom breakdown logic by equality
-#             self.result_label.text = f'Each person pays: RM{total_bill / num_people:.2f}'
-
-#         elif self.spinner.text == 'Custom break-down by percentage/ratio':
-#             percentages = [float(text_input.text) for text_input in self.custom_grid.children[::-2]] # Extract inputs
-#             if sum(percentages) != 100:
-#                 self.result_label.text = 'Percentages do not add up to 100%'
-#                 return
-#             amounts = [total_bill * p / 100 for p in percentages]
-#             result_text = ', '.join([f'RM{amount:.2f}' for amount in amounts])
-#             self.result_label.text = 'Amounts: ' + result_text
-
-#         elif self.spinner.text == 'Custom break-down by amount':
-#             amounts = [float(text_input.text) for text_input in self.custom_grid.children[::-2]] # Extract inputs
-#             if sum(amounts) != total_bill:
-#                 self.result_label.text = f'Discrepancy detected: Sum of individual amounts (RM{sum(amounts):.2f}) does not match total bill (RM{total_bill:.2f})'
-#                 return
-#             result_text = ', '.join([f'RM{amount:.2f}' for amount in amounts])
-#             self.result_label.text = 'Amounts: ' + result_text
-
-#         else:
-#             custom_value = float(self.custom_input.text)
-#             # Able to customize the following logic as per your requirements
-#             amount = total_bill * custom_value / 100
-#             self.result_label.text = f'First person pays: RM{amount:.2f}, Second person pays: RM{total_bill - amount:.2f}'
-
-#     def save_results(self, instance):
-#         if not self.result_label.text:
-#             return
-
-#         data = {
-#             'total_bill': self.total_bill_input.text,
-#             'number_of_people': self.people_input.text,
-#             'breakdown_type': self.spinner.text,
-#             'result': self.result_label.text
-#         }
-
-#         with open('results.json', 'a') as file:
-#             json.dump(data, file)
-#             file.write('\n')
-
-#     def query_results(self, instance):
-#         results = []
-#         try:
-#             with open('results.json', 'r') as file:
-#                 for line in file:
-#                     results.append(json.loads(line.strip()))
-#         except FileNotFoundError:
-#             pass
-
-#         self.box.clear_widgets()
-#         self.scroll_view = ScrollView(size_hint=(1, None), size=(Window.width, Window.height))
-#         box = BoxLayout(orientation='vertical', size_hint_y=None)
-#         box.bind(minimum_height=box.setter('height'))
-
-#         for result in results:
-#             label = Label(text=f"Total Bill: {result['total_bill']}, People: {result['number_of_people']}, Type: {result['breakdown_type']}, Result: {result['result']}")
-#             box.add_widget(label)
-
-#         self.scroll_view.add_widget(box)
-#         self.box.add_widget(self.scroll_view)
-
-    
-#     def on_spinner_select(self, instance, value):
-#         if value == 'Custom break-down':
-#             self.custom_input.disabled = False
-#         else:
-#             self.custom_input.disabled = True
-
-#     def share_results(self, instance):
-#         if not self.result_label.text:
-#             # Don't attempt to share if there's no result
-#             return
-
-#         subject = "Bill Breakdown"
-#         body = f"Here's the breakdown of the bill:\n\n{self.result_label.text}"
-        
-#         # Open the email client with pre-filled subject and body
-#         email.send(subject=subject, text=body)
-
-# if __name__ == '__main__':
-#     BreakdownApp().run()

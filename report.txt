@@ -1,0 +1,3 @@
+Total, No. of People, Type, Result
+67.40, 5, Equal break-down, Each person pays: RM13.48
+70, 3, Custom break-down by ratio, Ratio 1: RM17.50, Ratio 2: RM24.50, Ratio 3: RM28.00

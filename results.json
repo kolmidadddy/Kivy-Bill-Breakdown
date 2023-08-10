@@ -1,0 +1,4 @@
+[
+{"total_bill": "67.40", "number_of_people": "5", "breakdown_type": "Equal break-down", "result": "Each person pays: RM13.48"}, 
+{"total_bill": "70", "number_of_people": "3", "breakdown_type": "Custom break-down by ratio", "result": "Ratio 1: RM17.50, Ratio 2: RM24.50, Ratio 3: RM28.00"}
+]

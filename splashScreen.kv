@@ -1,0 +1,39 @@
+#######################################################################################################
+##                                            SPLASH SCREEN
+#######################################################################################################
+MDScreen:
+    # set screen name
+    name:"SplashScreen"
+    # start the progress bar animation when the screen is active
+    on_enter: self.ids.progress.start()
+
+    # add float layout
+    FloatLayout:
+        # add gif image
+        Image:
+            source:'assets\spin.gif'
+            allow_stretch: True
+            size_hint:1,1
+            anim_delay: 0.1
+            # anim loop: 1
+            anim_reset: True
+
+        BoxLayout:
+            # set box position
+            pos_hint:{'center_y':.3,'center_x':.5}
+            padding: "10dp"
+            # set width to 70%
+            size_hint_x: .7
+
+        # add progress bar
+        ProgressBar:
+            # set progress id
+            id: progress
+            # set orientation
+            orientation: "horizontal"
+            # set progress type
+            running_duration: 1
+            # catching duration
+            catching_duration: 1
+            # set max value
+            max: 100
