@@ -8,7 +8,6 @@ from email.message import EmailMessage
 from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.lang import Builder
-from kivy.utils import platform
 from kivy.core.window import Window
 
 from kivy.uix.screenmanager import Screen, ScreenManager
@@ -50,7 +49,7 @@ class SplashScreen(MDScreen):
         gif_image = Image(source='assets\spin.gif', allow_stretch=True)
         float_layout.add_widget(gif_image)
         self.add_widget(float_layout)
-        Clock.schedule_once(self.goto_main_screen, 15) # 10 seconds delay
+        Clock.schedule_once(self.goto_main_screen, 20) # 10 seconds delay
         
     def goto_main_screen(self,*args):
         self.manager.current ='Login'
