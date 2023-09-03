@@ -7,7 +7,7 @@ What features are provided?
 2. View the Previous Results saved from mthe calculations
 3. Generate a report into txt file
  
-Libraries to be Imported
+Libraries to be imported
 1. run 
     pip install -r requirements.txt
 
