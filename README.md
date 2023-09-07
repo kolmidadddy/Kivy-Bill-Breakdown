@@ -1,14 +1,52 @@
-# MAD-individual-ass
+# Bill Breakdown Application
+## Table of Contents
+Introduction
+Features
+Installation
+Usage
+Dependencies
+Contributing
+License
 
-A project you can clone to build Bill Breakdown project with Kivy 
+## Introduction
 
-What features are provided?
-1. Calculator with two options given (Equal breakdown, Custom breakdown by ratio)
-2. View the Previous Results saved from mthe calculations
-3. Generate a report into txt file
- 
-Libraries to be Imported
-1. run 
-    pip install -r requirements.txt
+The Bill Breakdown Application is a Kivy-based application designed to help users easily break down their bills among multiple people. It offers an intuitive and user-friendly interface with support for various bill breakdown methods, including equal division and custom ratios.
+
+## Features
+
+- User Authentication: Secure login functionality.
+- Dashboard: Quick access to all application features.
+- Bill Breakdown Calculator: Perform equal or custom bill splits.
+- Result Saving: Option to save the breakdown results locally.
+- View Previous Results: Access saved bill breakdown results.
+- Share Results: Generate a report and share it via email or save it to a specific directory.
+
+## Installation
+1. Clone the repository to your local machine
+```bash
+git clone https://github.com/YourUsername/BillBreakdownApp.git
+```
+2. Navigate into your project directory:
+```bash
+cd BillBreakdownApp
+```
+3. Install the required dependencies
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+Login or Sign Up: Authenticate using the Login Screen.
+Dashboard: Choose the desired action from the Dashboard.
+Bill Breakdown: Enter the bill details and choose the type of breakdown. Click 'Calculate' to view the results.
+Save Results: Click the save button to store the breakdown results.
+View Previous Results: View saved results from the View Previous Results screen.
+Share Results: Share the breakdown report via various available options.
+
+## Dependencies
+- Kivy
+- KivyMD
+- Python 3x
+- json
 
 
