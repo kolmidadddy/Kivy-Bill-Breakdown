@@ -9,8 +9,6 @@
 
 
 ## Introduction
-
-<<<<<<< HEAD
 The Bill Breakdown Application is a Kivy-based application designed to help users easily break down their bills among multiple people. It offers an intuitive and user-friendly interface with support for various bill breakdown methods, including equal division and custom ratios.
 
 ## Features
